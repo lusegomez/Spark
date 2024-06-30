@@ -3,11 +3,14 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SQLContext;
 import org.apache.spark.sql.SparkSession;
 import org.graphframes.GraphFrame;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class Geometrias {
     public static void main(String[] args) {
@@ -18,9 +21,11 @@ public class Geometrias {
         }
         String inputPath = args[0];
 
-        SparkConf sparkConf = new SparkConf().setAppName("Geometrias").setMaster("local[*]");
+        SparkConf sparkConf = new SparkConf().setAppName("Geometrias");
         JavaSparkContext sparkContext = new JavaSparkContext(sparkConf);
-        SparkSession sparkSession = SparkSession.builder().config(sparkConf).getOrCreate();
+        SparkSession sparkSession = SparkSession.builder()
+                .sparkContext(sparkContext.sc())
+                .getOrCreate();
 
         try {
             Dataset<Row> dataset = sparkSession.read().option("header", "true").csv(inputPath);

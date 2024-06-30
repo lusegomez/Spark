@@ -1,0 +1,6 @@
+scp ./TPE-BD-Grafos-1.0-SNAPSHOT.jar  lusegomez@pampero.itba.edu.ar:/home/lusegomez/
+ssh -D 9999 lusegomez@pampero.itba.edu.ar
+scp /home/lusegomez/TPE-BD-Grafos-1.0-SNAPSHOT.jar  lugomez@node1.it.itba.edu.ar:/home/lugomez/
+
+spark-submit --master local[*] --class core.Geometrias /home/lugomez/TPE-BD-Grafos-1.0-SNAPSHOT.jar data.csv
+
