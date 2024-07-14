@@ -1,6 +1,16 @@
 scp ./TPE-BD-Grafos-1.0-SNAPSHOT.jar  lusegomez@pampero.itba.edu.ar:/home/lusegomez/
 ssh -D 9999 lusegomez@pampero.itba.edu.ar
 scp /home/lusegomez/TPE-BD-Grafos-1.0-SNAPSHOT.jar  lugomez@node1.it.itba.edu.ar:/home/lugomez/
+ssh lugomez@node1.it.itba.edu.ar
 
-spark-submit --master local[*] --class core.Geometrias /home/lugomez/TPE-BD-Grafos-1.0-SNAPSHOT.jar data.csv
+spark-submit --master local[*] --class core.Geometrias /home/lugomez/TPE-BD-Grafos-1.0-SNAPSHOT.jar file:///home/lugomez/data.csv
 
+spark-submit --master yarn --deploy-mode=cluster --class core.Geometrias /home/lugomez/TPE-BD-Grafos-1.0-SNAPSHOT.jar file:///home/lugomez/data.csv
+
+
+
+subir archivo:
+hdfs dfs -put ./data.csv /user/lugomez/data.csv
+
+
+https://graphframes.github.io/graphframes/docs/_site/user-guide.html
