@@ -5,6 +5,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.*;
 import org.graphframes.GraphFrame;
 
+import javax.xml.crypto.Data;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -51,6 +52,7 @@ public class Geometrias {
             // Cantor pairing
             dataset = dataset.withColumn("id1", cantorPairing(dataset.col("x1"), dataset.col("y1")))
                     .withColumn("id2", cantorPairing(dataset.col("x2"), dataset.col("y2")));
+            dataset.show();
 
             Dataset<Row> vertices1 = dataset.select(
                     dataset.col("id1").alias("id"),
@@ -62,26 +64,21 @@ public class Geometrias {
                     dataset.col("x2").alias("x"),
                     dataset.col("y2").alias("y")
             );
-
             Dataset<Row> vertices = vertices1.union(vertices2).distinct();
+            vertices.show();
 
             Dataset<Row> edges = dataset.selectExpr("id1 as src", "id2 as dst");
-            edges = edges.withColumn("sorted_src", when(col("src").lt(col("dst")), col("src")).otherwise(col("dst")))
-                    .withColumn("sorted_dst", when(col("src").lt(col("dst")), col("dst")).otherwise(col("src")))
-                    .dropDuplicates("sorted_src", "sorted_dst")
-                    .drop("sorted_src", "sorted_dst");
-            dataset.show();
-            vertices.show();
+            Dataset<Row> reversedEdges = edges.selectExpr("dst as src", "src as dst");
+            edges = edges.union(reversedEdges).dropDuplicates();
             edges.show();
+
             GraphFrame graphFrame = new GraphFrame(vertices, edges);
-            long numVertices = graphFrame.vertices().count();
-            long numEdges = graphFrame.edges().count();
-            System.out.println("Node qty: " + numVertices);
-            System.out.println("Edge qty: " + numEdges);
 
             Dataset<Row> quadrilaterals = findQuads(graphFrame);
             quadrilaterals.show();
 
+//            Dataset<Row> validQuads = validQuads(graphFrame, quadrilaterals);
+//            validQuads.show();
 //            String outputPath = saveResults(quadrilaterals, inputPath);
 //            System.out.println("Results saved in: " + outputPath);
 
@@ -93,9 +90,14 @@ public class Geometrias {
         }
     }
 
+    private static Column cantorPairing(Column x, Column y) {
+        // Formula modificada: (x^2 + x + 2xy + 3y + y^2) / 2
+        return expr("(((" + x + " + " + y + ") / 2) * ((" + x + " + " + y + ") + 1)) + " + y);
+    }
+
     private static Dataset<Row> findQuads(GraphFrame graphFrame) {
-        Dataset<Row> quads = graphFrame.find("(A)-[ab]->(B); (B)-[bc]->(C); (C)-[cd]->(D); (D)-[da]->(A)");
-                .where("A.id < B.id AND B.id < C.id AND C.id < D.id")
+        Dataset<Row> quads = graphFrame.find("(A)-[ab]->(B); (B)-[bc]->(C); (C)-[cd]->(D); (D)-[da]->(A)")
+                .filter("A != B AND A != C AND A != D AND B != C AND B != D AND C != D")
                 .select(
                         col("A.id").alias("vertexA"),
                         col("B.id").alias("vertexB"),
@@ -104,7 +106,21 @@ public class Geometrias {
                 );
 
         return quads.orderBy("vertexA");
-        return quads;
+    }
+    private static Dataset<Row> validQuads(GraphFrame graphFrame, Dataset<Row> quads) {
+        return quads.filter(row -> {
+            long vertexA = row.getLong(0);
+            long vertexB = row.getLong(1);
+            long vertexC = row.getLong(2);
+            long vertexD = row.getLong(3);
+
+            return graphFrame.edges().filter(
+                    (col("src").equalTo(vertexA).and(col("dst").equalTo(vertexB)))
+                            .or(col("src").equalTo(vertexB).and(col("dst").equalTo(vertexC)))
+                            .or(col("src").equalTo(vertexC).and(col("dst").equalTo(vertexD)))
+                            .or(col("src").equalTo(vertexD).and(col("dst").equalTo(vertexA)))
+            ).count() == 4;
+        });
     }
 
     private static String saveResults(Dataset<Row> results, String inputPath) {
@@ -129,13 +145,5 @@ public class Geometrias {
 
         return outputPath;
     }
-//
-//    private static org.apache.spark.sql.Column cantorPairing(org.apache.spark.sql.Column x, org.apache.spark.sql.Column y) {
-//        return functions.expr("cast(((" + x + " * (" + x + " + " + y + " + 1)) / 2) + " + y + " as int)");
-//    }
 
-    private static Column cantorPairing(Column x, Column y) {
-        // Formula modificada: (x^2 + x + 2xy + 3y + y^2) / 2
-        return expr("(((" + x + " + " + y + ") / 2) * ((" + x + " + " + y + ") + 1)) + " + y);
-    }
 }
