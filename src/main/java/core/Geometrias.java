@@ -109,44 +109,91 @@ public class Geometrias {
 
                     return !segmentsIntersect(A, B, C, D);
                 })
-                .select(
-                        col("A.id").alias("vertexA"),
-                        col("B.id").alias("vertexB"),
-                        col("C.id").alias("vertexC"),
-                        col("D.id").alias("vertexD")
-                );
+                .filter(row -> {
+                    Row A = row.getAs("A");
+                    Row B = row.getAs("B");
+                    Row C = row.getAs("C");
+                    Row D = row.getAs("D");
 
-        return quads.orderBy("vertexA");
+                    return antiClockwise(A,B,C,D);
+                })
+                .withColumn("sorted_ids", sort_array(array(col("A.id"), col("B.id"), col("C.id"), col("D.id"))))
+                .orderBy("A.id")
+                .dropDuplicates("sorted_ids")
+                .select(
+                        col("A.id").alias("id1"),
+                        col("A.x").alias("x1"),
+                        col("A.y").alias("y1"),
+                        col("B.id").alias("id2"),
+                        col("B.x").alias("x2"),
+                        col("B.y").alias("y2"),
+                        col("C.id").alias("id3"),
+                        col("C.x").alias("x3"),
+                        col("C.y").alias("y3"),
+                        col("D.id").alias("id4"),
+                        col("D.x").alias("x4"),
+                        col("D.y").alias("y4"),
+                        col("A.id").alias("id5"),
+                        col("A.x").alias("x5"),
+                        col("A.y").alias("y5")
+                );
+        return quads.orderBy("id1");
     }
 
-    private static boolean segmentsIntersect(Row p1, Row q1, Row p2, Row q2) {
-        //Segment 1
-        int p1x = p1.getAs("x");;
-        int p1y = p1.getAs("y");
-        int q1x = q1.getAs("x");
-        int q1y = q1.getAs("y");
+    private static boolean antiClockwise(Row A, Row B, Row C, Row D) {
+        return orientation(A, B, C) == -1 &&
+                orientation(B, C, D) == -1 &&
+                orientation(C, D, A) == -1;
+    }
 
-        //Segment 2
-        int p2x = p2.getAs("x");
-        int p2y = p2.getAs("y");
-        int q2x = q2.getAs("x");
-        int q2y = q2.getAs("y");
+    private static boolean segmentsIntersect(Row A, Row B, Row C, Row D) {
+//        //Segment 1
+//        int p1x = p1.getAs("x");;
+//        int p1y = p1.getAs("y");
+//        int q1x = q1.getAs("x");
+//        int q1y = q1.getAs("y");
+//
+//        //Segment 2
+//        int p2x = p2.getAs("x");
+//        int p2y = p2.getAs("y");
+//        int q2x = q2.getAs("x");
+//        int q2y = q2.getAs("y");
+//
+//        int o1 = orientation(p1x, p1y, q1x, q1y, p2x, p2y);
+//        int o2 = orientation(p1x, p1y, q1x, q1y, q2x, q2y);
+//        int o3 = orientation(p2x, p2y, q2x, q2y, p1x, p1y);
+//        int o4 = orientation(p2x, p2y, q2x, q2y, q1x, q1y);
 
-        int o1 = orientation(p1x, p1y, q1x, q1y, p2x, p2y);
-        int o2 = orientation(p1x, p1y, q1x, q1y, q2x, q2y);
-        int o3 = orientation(p2x, p2y, q2x, q2y, p1x, p1y);
-        int o4 = orientation(p2x, p2y, q2x, q2y, q1x, q1y);
+        int o1 = orientation(A, B, C);
+        int o2 = orientation(A, B, D);
+        int o3 = orientation(C, D, A);
+        int o4 = orientation(C, D, B);
 
         return o1 != o2 && o3 != o4;
     }
 
-    public static int orientation(double x1, double y1, double x2, double y2, double x3, double y3) {
-        double valor = (y2 - y1) * (x3 - x2) - (x2 - x1) * (y3 - y2);
-        if (valor == 0) {
+    public static int orientation(Row p, Row q, Row r) {
+        int px = p.getAs("x");
+        int py = p.getAs("y");
+        int qx = q.getAs("x");
+        int qy = q.getAs("y");
+        int rx = r.getAs("x");
+        int ry = r.getAs("y");
+
+        double val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+        if (val == 0) {
             return 0;
         }
-        return (valor > 0) ? 1 : -1;
+        return (val > 0) ? 1 : -1;
     }
+
+//    public static int orientation(double x1, double y1, double x2, double y2, double x3, double y3) {
+//        double valor = (y2 - y1) * (x3 - x2) - (x2 - x1) * (y3 - y2);
+//        if (valor == 0) {
+//            return 0;
+//        }
+//        return (valor > 0) ? 1 : -1;
+//    }
 
     private static String saveResults(Dataset<Row> results, String inputPath) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
