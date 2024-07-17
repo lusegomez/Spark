@@ -10,6 +10,7 @@ import org.graphframes.GraphFrame;
 import javax.xml.crypto.Data;
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Objects;
 
@@ -80,10 +81,9 @@ public class Geometrias {
             Dataset<Row> quads = findQuads(graphFrame);
             quads.show();
 
-//            Dataset<Row> validQuads = validQuads(graphFrame, quadrilaterals);
-//            validQuads.show();
-//            String outputPath = saveResults(quadrilaterals, inputPath);
-//            System.out.println("Results saved in: " + outputPath);
+
+            String outputPath = saveResults(quads, inputPath);
+            System.out.println("Results saved in: " + outputPath);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -107,7 +107,7 @@ public class Geometrias {
                     Row C = row.getAs("C");
                     Row D = row.getAs("D");
 
-                    return !segmentsIntersect(A, B, C, D);
+                    return !segmentsIntersect(A, B, C, D) && !segmentsIntersect(B, C, D, A);
                 })
                 .filter(row -> {
                     Row A = row.getAs("A");
@@ -147,23 +147,6 @@ public class Geometrias {
     }
 
     private static boolean segmentsIntersect(Row A, Row B, Row C, Row D) {
-//        //Segment 1
-//        int p1x = p1.getAs("x");;
-//        int p1y = p1.getAs("y");
-//        int q1x = q1.getAs("x");
-//        int q1y = q1.getAs("y");
-//
-//        //Segment 2
-//        int p2x = p2.getAs("x");
-//        int p2y = p2.getAs("y");
-//        int q2x = q2.getAs("x");
-//        int q2y = q2.getAs("y");
-//
-//        int o1 = orientation(p1x, p1y, q1x, q1y, p2x, p2y);
-//        int o2 = orientation(p1x, p1y, q1x, q1y, q2x, q2y);
-//        int o3 = orientation(p2x, p2y, q2x, q2y, p1x, p1y);
-//        int o4 = orientation(p2x, p2y, q2x, q2y, q1x, q1y);
-
         int o1 = orientation(A, B, C);
         int o2 = orientation(A, B, D);
         int o3 = orientation(C, D, A);
@@ -187,35 +170,16 @@ public class Geometrias {
         return (val > 0) ? 1 : -1;
     }
 
-//    public static int orientation(double x1, double y1, double x2, double y2, double x3, double y3) {
-//        double valor = (y2 - y1) * (x3 - x2) - (x2 - x1) * (y3 - y2);
-//        if (valor == 0) {
-//            return 0;
-//        }
-//        return (valor > 0) ? 1 : -1;
-//    }
-
     private static String saveResults(Dataset<Row> results, String inputPath) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
         String timestamp = sdf.format(new Date());
-        String outputPath = inputPath.replace(".csv", "_" + timestamp + ".csv");
-        System.out.println("Contenido del DataFrame 'results':");
-        results.show();
-        results.coalesce(1)
-                .write()
-                .option("header", "true")
-                .csv(outputPath);
 
-        // Rename the output file to part-00000.csv
-        File outputFile = new File(outputPath);
-        File[] files = outputFile.listFiles((dir, name) -> name.startsWith("part-") && name.endsWith(".csv"));
-        if (files != null && files.length > 0) {
-            File renamedFile = new File(outputFile.getParent(), "part-" + timestamp + ".csv");
-            files[0].renameTo(renamedFile);
-            return renamedFile.getAbsolutePath();
-        }
+        String directory = new File(inputPath).getParent() + "/" + timestamp;
 
-        return outputPath;
+        results.write()
+            .option("header", "true")
+            .csv(directory);
+     return directory;
     }
 
 }
